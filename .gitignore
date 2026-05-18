@@ -1,0 +1,39 @@
+# ── Variables de entorno ──────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Maven ─────────────────────────────────────────────────────────────────────
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+!.mvn/wrapper/maven-wrapper.jar
+
+# ── IDEs ─────────────────────────────────────────────────────────────────────
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+.factorypath
+nbactions.xml
+nb-configuration.xml
+
+# ── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
