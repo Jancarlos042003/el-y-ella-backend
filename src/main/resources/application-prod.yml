@@ -40,6 +40,10 @@ cookie:
 cors:
   allowed-origins: ${CORS_ORIGINS}
 
+# ── Google Cloud Storage ─────────────────────────────────────────────────────
+gcs:
+  bucket-name: ${GCS_BUCKET_NAME}
+
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging:
   level:
