@@ -18,6 +18,8 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Objects;
+
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -33,6 +35,7 @@ public class FlowerService {
 
     private final FlowerRepository flowerRepository;
     private final CategoryRepository categoryRepository;
+    private final GcsService gcsService;
 
     private FlowerResponse toResponse(Flower flower) {
         Set<CategoryResponse> categories = flower.getCategories().stream()
@@ -126,11 +129,17 @@ public class FlowerService {
         return toResponse(saved);
     }
 
-    /** Actualiza los datos de una flor existente. */
+    /** Actualiza los datos de una flor existente. Elimina la imagen anterior de GCS si cambió. */
     @Transactional
     public FlowerResponse update(Long id, FlowerRequest request) {
         Flower flower = flowerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Flor", id));
+
+        String oldImageUrl = flower.getImageUrl();
+        if (oldImageUrl != null && !Objects.equals(oldImageUrl, request.imageUrl())) {
+            gcsService.deleteImage(oldImageUrl);
+        }
+
         flower.setName(request.name());
         flower.setDescription(request.description());
         flower.setPrice(request.price());
@@ -141,13 +150,17 @@ public class FlowerService {
         return toResponse(flower);
     }
 
-    /** Elimina una flor del catálogo. */
+    /** Elimina una flor del catálogo y su imagen asociada de GCS. */
     @Transactional
     public void delete(Long id) {
-        if (!flowerRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Flor", id);
+        Flower flower = flowerRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Flor", id));
+
+        if (flower.getImageUrl() != null) {
+            gcsService.deleteImage(flower.getImageUrl());
         }
-        flowerRepository.deleteById(id);
+
+        flowerRepository.delete(flower);
         log.debug("Flor eliminada: id={}", id);
     }
 }

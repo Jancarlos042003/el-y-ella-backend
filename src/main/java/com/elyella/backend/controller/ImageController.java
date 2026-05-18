@@ -18,7 +18,8 @@ import java.util.Map;
 
 /**
  * Endpoints para subida de imágenes a Google Cloud Storage.
- * Restringido a ADMIN — el frontend recibe la URL pública y la envía al crear/editar una flor.
+ * Flujo esperado en el frontend: (1) subir la imagen aquí para obtener la URL pública,
+ * (2) enviar esa URL en el campo imageUrl al crear o editar una flor.
  */
 @RestController
 @RequestMapping("/api/v1/images")
