@@ -18,6 +18,12 @@ spring:
     problemdetails:
       enabled: true
 
+  # ── Subida de archivos ────────────────────────────────────────────────────
+  servlet:
+    multipart:
+      max-file-size: 8MB
+      max-request-size: 8MB
+
   # ── Virtual Threads (JDK 21) ───────────────────────────────────────────────
   threads:
     virtual:

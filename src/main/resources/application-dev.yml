@@ -34,6 +34,13 @@ cookie:
   secure: false
   same-site: Lax
 
+# ── Google Cloud Storage ─────────────────────────────────────────────────────
+gcs:
+  # Autenticación local (elegir una opción):
+  #   1. Cuenta de servicio: export GOOGLE_APPLICATION_CREDENTIALS=/ruta/a/key.json
+  #   2. Usuario GCP:        gcloud auth application-default login
+  bucket-name: ${GCS_BUCKET_NAME:el-y-ella-dev}
+
 # ── Logging ───────────────────────────────────────────────────────────────────
 logging:
   level:

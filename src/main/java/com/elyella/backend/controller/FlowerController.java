@@ -66,7 +66,11 @@ public class FlowerController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "Bearer Auth")
-    @Operation(summary = "Crear flor (ADMIN)")
+    @Operation(
+            summary = "Crear flor (ADMIN)",
+            description = "Si la flor incluye imagen, primero súbela a POST /api/v1/images/upload " +
+                          "y envía la URL resultante en el campo imageUrl."
+    )
     public ResponseEntity<FlowerResponse> create(@Valid @RequestBody FlowerRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(flowerService.create(request));
     }
@@ -74,7 +78,11 @@ public class FlowerController {
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @SecurityRequirement(name = "Bearer Auth")
-    @Operation(summary = "Actualizar flor (ADMIN)")
+    @Operation(
+            summary = "Actualizar flor (ADMIN)",
+            description = "Si se cambia la imagen, primero súbela a POST /api/v1/images/upload " +
+                          "y envía la URL resultante en imageUrl. La imagen anterior se elimina automáticamente del bucket."
+    )
     public ResponseEntity<FlowerResponse> update(@PathVariable Long id,
                                                  @Valid @RequestBody FlowerRequest request) {
         return ResponseEntity.ok(flowerService.update(id, request));

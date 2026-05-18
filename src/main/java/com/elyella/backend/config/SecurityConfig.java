@@ -53,6 +53,8 @@ public class SecurityConfig {
             "/api/v1/categories/**",
             "/api/v1/reviews/flower/**",
             "/api/v1/payments/webhook",
+            "/api/v1/discounts/active",
+            "/api/v1/discounts/flower/*/active",
             // Swagger UI y OpenAPI docs
             "/swagger-ui.html",
             "/swagger-ui/**",
