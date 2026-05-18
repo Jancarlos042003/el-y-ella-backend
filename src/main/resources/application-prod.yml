@@ -34,7 +34,7 @@ mercadopago:
 cookie:
   # HTTPS obligatorio en producción
   secure: true
-  same-site: Strict
+  same-site: None
 
 # ── CORS ─────────────────────────────────────────────────────────────────────
 cors:
