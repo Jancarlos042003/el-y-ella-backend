@@ -27,6 +27,19 @@
         <openpdf-html.version>3.0.0</openpdf-html.version>
     </properties>
 
+    <!-- ==================== GCS BOM ==================== -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>libraries-bom</artifactId>
+                <version>26.78.0</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
 
         <!-- ==================== SPRING BOOT CORE ==================== -->
@@ -119,6 +132,18 @@
             <groupId>com.github.librepdf</groupId>
             <artifactId>openpdf-html</artifactId>
             <version>${openpdf-html.version}</version>
+        </dependency>
+
+        <!-- ==================== GOOGLE CLOUD STORAGE ==================== -->
+
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-storage</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-storage-control</artifactId>
         </dependency>
 
         <!-- ==================== UTILIDADES ==================== -->
