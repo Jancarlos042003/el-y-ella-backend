@@ -1,5 +1,6 @@
 package com.elyella.backend.dto.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 
 import java.math.BigDecimal;
@@ -23,6 +24,7 @@ public record FlowerRequest(
         @Min(value = 0, message = "El stock no puede ser negativo")
         int stock,
 
+        @Schema(description = "URL pública de la imagen. Obtenerla previamente desde POST /api/v1/images/upload.")
         String imageUrl,
 
         Set<Long> categoryIds
