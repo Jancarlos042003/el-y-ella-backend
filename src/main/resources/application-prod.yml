@@ -1,0 +1,48 @@
+spring:
+  # ── Base de datos ──────────────────────────────────────────────────────────
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 30000
+      # Supabase cierra conexiones inactivas — mantener vivas
+      keepalive-time: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  # ── JPA / Hibernate ────────────────────────────────────────────────────────
+  jpa:
+    hibernate:
+      # En producción nunca modificar el esquema automáticamente
+      ddl-auto: validate
+    show-sql: false
+
+# ── JWT ─────────────────────────────────────────────────────────────────────
+jwt:
+  secret: ${JWT_SECRET}
+
+# ── Mercado Pago ─────────────────────────────────────────────────────────────
+mercadopago:
+  access-token: ${MP_ACCESS_TOKEN}
+  webhook-secret: ${MP_WEBHOOK_SECRET}
+  notification-url: ${MP_NOTIFICATION_URL}
+
+# ── Cookie JWT ────────────────────────────────────────────────────────────────
+cookie:
+  # HTTPS obligatorio en producción
+  secure: true
+  same-site: Strict
+
+# ── CORS ─────────────────────────────────────────────────────────────────────
+cors:
+  allowed-origins: ${CORS_ORIGINS}
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+logging:
+  level:
+    com.elyella.backend: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN

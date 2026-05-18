@@ -1,0 +1,56 @@
+spring:
+  application:
+    name: el-y-ella-backend
+
+  # Perfil activo por defecto — sobreescribir con SPRING_PROFILES_ACTIVE en producción
+  profiles:
+    active: dev
+
+  # ── JPA / Hibernate ────────────────────────────────────────────────────────
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  # ── Manejo de errores RFC 9457 (ProblemDetail) ─────────────────────────────
+  mvc:
+    problemdetails:
+      enabled: true
+
+  # ── Virtual Threads (JDK 21) ───────────────────────────────────────────────
+  threads:
+    virtual:
+      enabled: true
+
+# ── Servidor ────────────────────────────────────────────────────────────────
+server:
+  port: 8080
+
+# ── JWT ─────────────────────────────────────────────────────────────────────
+jwt:
+  expiration-ms: 86400000
+
+# ── Cookie JWT ────────────────────────────────────────────────────────────────
+cookie:
+  name: jwt
+  max-age-seconds: 86400
+
+# ── Documentación OpenAPI ─────────────────────────────────────────────────────
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+
+# ── Actuator ──────────────────────────────────────────────────────────────────
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, metrics
+  endpoint:
+    health:
+      show-details: when-authorized
