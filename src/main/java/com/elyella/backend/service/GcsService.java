@@ -15,8 +15,8 @@ import java.util.UUID;
 
 /**
  * Gestión de imágenes en Google Cloud Storage.
- * Los objetos se crean con ACL PUBLIC_READ; la URL pública sigue el patrón
- * https://storage.googleapis.com/{bucket}/{objeto}.
+ * El bucket usa uniform bucket-level access; la visibilidad pública se controla
+ * vía IAM. La URL pública sigue el patrón https://storage.googleapis.com/{bucket}/{objeto}.
  */
 @Service
 @RequiredArgsConstructor
@@ -37,7 +37,7 @@ public class GcsService {
         String contentType = file.getContentType();
         if (contentType == null || !ALLOWED_TYPES.contains(contentType)) {
             throw new IllegalArgumentException(
-                    "Tipo de archivo no permitido. Se aceptan: JPEG, PNG, WebP, GIF.");
+                    "Tipo de archivo no permitido. Se aceptan: JPEG, PNG, WebP.");
         }
 
         String objectName = FOLDER + UUID.randomUUID() + "_" + file.getOriginalFilename();
@@ -47,8 +47,9 @@ public class GcsService {
                 .build();
 
         try {
-            storage.create(blobInfo, file.getBytes(),
-                    Storage.BlobTargetOption.predefinedAcl(Storage.PredefinedAcl.PUBLIC_READ));
+            // El bucket usa uniform bucket-level access — el acceso público se gestiona
+            // vía IAM (allUsers con rol Storage Object Viewer), no con ACL por objeto.
+            storage.create(blobInfo, file.getBytes());
         } catch (IOException e) {
             throw new RuntimeException("Error al subir la imagen a GCS.", e);
         }
