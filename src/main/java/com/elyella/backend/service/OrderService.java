@@ -130,7 +130,7 @@ public class OrderService {
             log.info("Intento duplicado exitoso detectado para idempotencyKey={}", request.idempotencyKey());
             Order existingOrder = attempt.get().getOrder();
             Payment existingPayment = attempt.get().getPayment();
-            return new CheckoutResponse(existingOrder.getId(), existingPayment.getId(), existingPayment.getMpPreferenceId(), "PENDING");
+            return new CheckoutResponse(existingOrder.getId(), existingPayment.getId(), existingPayment.getMpPreferenceId(), PaymentStatus.PENDING);
         }
 
         // 2. Consolidar items y cargar productos de BD
@@ -215,7 +215,7 @@ public class OrderService {
             log.info("Checkout completado para usuario={}, pedido id={}, idempotencyKey={}",
                     email, order.getId(), request.idempotencyKey());
 
-            return new CheckoutResponse(order.getId(), payment.getId(), mpResult.get("initPoint"), "PENDING");
+            return new CheckoutResponse(order.getId(), payment.getId(), mpResult.get("initPoint"), PaymentStatus.PENDING);
 
         } catch (Exception e) {
             // Compensación manual: Revertir stock
