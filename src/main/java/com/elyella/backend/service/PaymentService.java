@@ -136,18 +136,23 @@ public class PaymentService {
 
             switch (mpPayment.getStatus()) {
                 case "approved" -> {
+                    if (payment.getPaymentStatus() == PaymentStatus.APPROVED) return; // Idempotencia
                     payment.setPaymentStatus(PaymentStatus.APPROVED);
-                    order.setStatus(OrderStatus.SHIPPED);
+                    order.setStatus(OrderStatus.PAID);
                     log.info("Pago aprobado para pedido id={}", orderId);
                 }
-                case "rejected" -> {
-                    payment.setPaymentStatus(PaymentStatus.REJECTED);
-                    log.info("Pago rechazado para pedido id={}", orderId);
-                }
-                case "cancelled" -> {
-                    payment.setPaymentStatus(PaymentStatus.CANCELLED);
+                case "rejected", "cancelled" -> {
+                    if (order.getStatus() == OrderStatus.RESERVED) {
+                        order.getDetails().forEach(detail -> {
+                            var flower = detail.getFlower();
+                            flower.setStock(flower.getStock() + detail.getQuantity());
+                            // el cascade u otro repositorio lo guardará, pero para estar seguros:
+                            // asumiendo transaccionalidad, con modificar la entidad basta.
+                        });
+                    }
+                    payment.setPaymentStatus(PaymentStatus.valueOf(mpPayment.getStatus().toUpperCase()));
                     order.setStatus(OrderStatus.CANCELLED);
-                    log.info("Pago cancelado para pedido id={}", orderId);
+                    log.info("Pago {} para pedido id={}, stock liberado (si aplicaba)", mpPayment.getStatus(), orderId);
                 }
                 default -> log.debug("Estado MP ignorado '{}' para pedido id={}", mpPayment.getStatus(), orderId);
             }

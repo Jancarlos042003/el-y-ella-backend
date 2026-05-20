@@ -1,19 +1,24 @@
 package com.elyella.backend.service;
 
+import com.elyella.backend.dto.request.CheckoutItemRequest;
 import com.elyella.backend.dto.request.CheckoutRequest;
 import com.elyella.backend.dto.request.UpdateOrderStatusRequest;
 import com.elyella.backend.dto.response.CheckoutResponse;
 import com.elyella.backend.dto.response.OrderDetailResponse;
 import com.elyella.backend.dto.response.OrderResponse;
 import com.elyella.backend.exception.InsufficientStockException;
+import com.elyella.backend.exception.PaymentException;
 import com.elyella.backend.exception.ResourceNotFoundException;
-import com.elyella.backend.model.Cart;
+import com.elyella.backend.model.CheckoutAttempt;
+import com.elyella.backend.model.Flower;
 import com.elyella.backend.model.Order;
 import com.elyella.backend.model.OrderDetail;
 import com.elyella.backend.model.Payment;
 import com.elyella.backend.model.User;
+import com.elyella.backend.model.enums.CheckoutStatus;
+import com.elyella.backend.model.enums.OrderStatus;
 import com.elyella.backend.model.enums.PaymentStatus;
-import com.elyella.backend.repository.CartRepository;
+import com.elyella.backend.repository.CheckoutAttemptRepository;
 import com.elyella.backend.repository.FlowerRepository;
 import com.elyella.backend.repository.OrderRepository;
 import com.elyella.backend.repository.PaymentRepository;
@@ -25,12 +30,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * Servicio para la gestión de pedidos y el flujo de checkout.
- * El método processCheckout() replica el flujo ACID del legado PagoDAO.procesarPagoYPedido().
  */
 @Service
 @RequiredArgsConstructor
@@ -39,10 +46,10 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
-    private final CartRepository cartRepository;
     private final FlowerRepository flowerRepository;
     private final UserRepository userRepository;
     private final PaymentService paymentService;
+    private final CheckoutAttemptRepository checkoutAttemptRepository;
 
     private User loadUser(String email) {
         return userRepository.findByEmail(email)
@@ -105,71 +112,78 @@ public class OrderService {
     }
 
     /**
-     * Procesa el checkout del usuario: valida el carrito, crea el pedido,
-     * descuenta el stock, limpia el carrito y genera la preferencia de Mercado Pago.
-     *
-     * Flujo ACID (replica PagoDAO.procesarPagoYPedido() del legado):
-     * 1. Validar carrito no vacío y stock suficiente.
-     * 2. Calcular total.
-     * 3. Crear Order (PENDING) con sus OrderDetail.
-     * 4. Decrementar stock de cada flor.
-     * 5. Crear Payment (PENDING) con datos de envío.
-     * 6. Vaciar carrito.
-     * 7. Crear preferencia en Mercado Pago.
-     * 8. Actualizar Payment.mpPreferenceId.
-     * 9. Retornar CheckoutResponse con initPoint para redirigir al usuario.
-     *
-     * Si cualquier paso falla → rollback automático por @Transactional.
+     * Procesa el checkout de manera segura:
+     * 1. Valida Idempotencia.
+     * 2. Consolida ítems y lee de BD.
+     * 3. Valida y reserva stock.
+     * 4. Crea Order (RESERVED) y Payment (PENDING).
+     * 5. Intenta conectar con Mercado Pago. Si falla, compensa revirtiendo el stock.
      */
     @Transactional
     public CheckoutResponse processCheckout(String email, CheckoutRequest request) {
         User user = loadUser(email);
-        List<Cart> cartItems = cartRepository.findByUserId(user.getId());
 
-        if (cartItems.isEmpty()) {
-            throw new ResourceNotFoundException("El carrito del usuario está vacío.");
+        // 1. Validar Idempotencia
+        Optional<CheckoutAttempt> attempt = checkoutAttemptRepository.findByUserIdAndIdempotencyKey(user.getId(), request.idempotencyKey());
+        if (attempt.isPresent() && attempt.get().isSuccess()) {
+            log.info("Intento duplicado exitoso detectado para idempotencyKey={}", request.idempotencyKey());
+            Order existingOrder = attempt.get().getOrder();
+            Payment existingPayment = attempt.get().getPayment();
+            return new CheckoutResponse(existingOrder.getId(), existingPayment.getId(), existingPayment.getMpPreferenceId(), "PENDING");
         }
 
-        // 1. Validar stock para todos los ítems antes de proceder
-        for (Cart item : cartItems) {
-            if (item.getFlower().getStock() < item.getQuantity()) {
-                throw new InsufficientStockException(
-                        item.getFlower().getName(), item.getFlower().getStock()
-                );
+        // 2. Consolidar items y cargar productos de BD
+        Map<Long, Integer> itemQuantities = request.items().stream()
+                .collect(Collectors.toMap(
+                        CheckoutItemRequest::flowerId,
+                        CheckoutItemRequest::quantity,
+                        Integer::sum // Suma si hay repetidos
+                ));
+
+        List<Flower> flowers = flowerRepository.findAllById(itemQuantities.keySet());
+        if (flowers.size() != itemQuantities.size()) {
+            throw new ResourceNotFoundException("Uno o más productos no existen en la base de datos.");
+        }
+
+        // 3. Validar stock
+        for (Flower flower : flowers) {
+            int quantity = itemQuantities.get(flower.getId());
+            if (flower.getStock() < quantity) {
+                throw new InsufficientStockException(flower.getName(), flower.getStock());
             }
         }
 
-        // 2. Calcular total
-        BigDecimal total = cartItems.stream()
-                .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+        // 4. Calcular total con precios de BD y crear Order (RESERVED)
+        BigDecimal total = flowers.stream()
+                .map(f -> f.getPrice().multiply(BigDecimal.valueOf(itemQuantities.get(f.getId()))))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // 3. Crear Order con sus OrderDetail (precio snapshot del carrito)
         Order order = Order.builder()
                 .user(user)
                 .total(total)
+                .status(OrderStatus.RESERVED) // Reservado por 15 min
+                .reservationExpiresAt(LocalDateTime.now().plusMinutes(15))
                 .build();
 
-        List<OrderDetail> details = cartItems.stream()
-                .map(item -> OrderDetail.builder()
+        List<OrderDetail> details = flowers.stream()
+                .map(flower -> OrderDetail.builder()
                         .order(order)
-                        .flower(item.getFlower())
-                        .quantity(item.getQuantity())
-                        .price(item.getPrice())
+                        .flower(flower)
+                        .quantity(itemQuantities.get(flower.getId()))
+                        .price(flower.getPrice())
                         .build())
                 .toList();
 
         order.getDetails().addAll(details);
         orderRepository.save(order);
 
-        // 4. Decrementar stock
-        cartItems.forEach(item -> {
-            var flower = item.getFlower();
-            flower.setStock(flower.getStock() - item.getQuantity());
+        // 5. Descontar Stock inmediatamente (Reserva)
+        for (Flower flower : flowers) {
+            flower.setStock(flower.getStock() - itemQuantities.get(flower.getId()));
             flowerRepository.save(flower);
-        });
+        }
 
-        // 5. Crear Payment (PENDING) con datos de envío
+        // 6. Crear Payment (PENDING)
         Payment payment = Payment.builder()
                 .user(user)
                 .order(order)
@@ -186,19 +200,52 @@ public class OrderService {
 
         paymentRepository.save(payment);
 
-        // 6. Vaciar carrito
-        cartRepository.deleteByUserId(user.getId());
+        // 7. Llamada a Mercado Pago con try-catch para compensación manual
+        try {
+            Map<String, String> mpResult = paymentService.createPreference(order);
+            
+            // Actualizamos Payment y guardamos intento exitoso
+            payment.setMpPreferenceId(mpResult.get("preferenceId"));
+            paymentRepository.save(payment); // Solo para forzar guardado y evitar problemas al enviar MP el preferenceId si falla el attempt
+            
+            // La preference que devolvemos en initPoint se envía, pero en BD guardamos la preference de MP
+            saveCheckoutAttempt(user, request.idempotencyKey(), order, payment, CheckoutStatus.SUCCESS);
 
-        // 7. Crear preferencia en Mercado Pago (llamada externa — si falla, @Transactional hace rollback)
-        Map<String, String> mpResult = paymentService.createPreference(order);
+            log.info("Checkout completado para usuario={}, pedido id={}, idempotencyKey={}",
+                    email, order.getId(), request.idempotencyKey());
 
-        // 8. Actualizar Payment con el ID de preferencia MP
-        payment.setMpPreferenceId(mpResult.get("preferenceId"));
-        paymentRepository.save(payment);
+            return new CheckoutResponse(order.getId(), payment.getId(), mpResult.get("initPoint"), "PENDING");
 
-        log.info("Checkout completado para usuario={}, pedido id={}, preferencia MP={}",
-                email, order.getId(), payment.getMpPreferenceId());
-
-        return new CheckoutResponse(order.getId(), payment.getId(), mpResult.get("initPoint"));
+        } catch (Exception e) {
+            // Compensación manual: Revertir stock
+            log.error("Error al crear preferencia en Mercado Pago, revirtiendo stock para pedido id={}", order.getId(), e);
+            for (Flower flower : flowers) {
+                flower.setStock(flower.getStock() + itemQuantities.get(flower.getId()));
+                flowerRepository.save(flower);
+            }
+            
+            // Actualizar estados a Fallidos
+            order.setStatus(OrderStatus.CANCELLED);
+            order.setReservationExpiresAt(null);
+            orderRepository.save(order);
+            
+            payment.setPaymentStatus(PaymentStatus.FAILED);
+            paymentRepository.save(payment);
+            
+            saveCheckoutAttempt(user, request.idempotencyKey(), null, null, CheckoutStatus.FAILED);
+            
+            throw new PaymentException("Falla al comunicar con la pasarela de pagos. El pedido ha sido cancelado y el stock liberado.");
+        }
+    }
+    
+    private void saveCheckoutAttempt(User user, String idempotencyKey, Order order, Payment payment, CheckoutStatus status) {
+        CheckoutAttempt newAttempt = CheckoutAttempt.builder()
+                .user(user)
+                .idempotencyKey(idempotencyKey)
+                .order(order)
+                .payment(payment)
+                .status(status)
+                .build();
+        checkoutAttemptRepository.save(newAttempt);
     }
 }
