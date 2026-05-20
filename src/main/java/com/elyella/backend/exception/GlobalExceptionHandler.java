@@ -87,6 +87,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(pd);
     }
 
+    @ExceptionHandler(InvalidCheckoutException.class)
+    public ResponseEntity<ProblemDetail> handleInvalidCheckout(InvalidCheckoutException ex) {
+        log.debug("Checkout inválido: {}", ex.getMessage());
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
+        pd.setTitle("Checkout inválido");
+        pd.setType(URI.create(BASE_TYPE + "invalid-checkout"));
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(pd);
+    }
+
     // ── Excepciones de Spring Security ───────────────────────────────────────
 
     /**

@@ -7,6 +7,7 @@ import com.elyella.backend.dto.response.CheckoutResponse;
 import com.elyella.backend.dto.response.OrderDetailResponse;
 import com.elyella.backend.dto.response.OrderResponse;
 import com.elyella.backend.exception.InsufficientStockException;
+import com.elyella.backend.exception.InvalidCheckoutException;
 import com.elyella.backend.exception.PaymentException;
 import com.elyella.backend.exception.ResourceNotFoundException;
 import com.elyella.backend.model.CheckoutAttempt;
@@ -142,7 +143,7 @@ public class OrderService {
 
         List<Flower> flowers = flowerRepository.findAllById(itemQuantities.keySet());
         if (flowers.size() != itemQuantities.size()) {
-            throw new ResourceNotFoundException("Uno o más productos no existen en la base de datos.");
+            throw new InvalidCheckoutException("Uno o más productos no existen en la base de datos.");
         }
 
         // 3. Validar stock
