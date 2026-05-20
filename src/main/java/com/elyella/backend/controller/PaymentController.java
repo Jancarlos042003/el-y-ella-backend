@@ -6,8 +6,11 @@ import com.elyella.backend.dto.response.PaymentStatusResponse;
 import com.elyella.backend.service.OrderService;
 import com.elyella.backend.service.PaymentService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import org.springframework.http.ProblemDetail;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -60,23 +63,28 @@ public class PaymentController {
             ),
             @ApiResponse(
                 responseCode = "400",
-                description = "Datos inválidos."
+                description = "Datos inválidos.",
+                content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class))
             ),
             @ApiResponse(
                 responseCode = "401",
-                description = "Usuario no autenticado."
+                description = "Usuario no autenticado.",
+                content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class))
             ),
             @ApiResponse(
                 responseCode = "409",
-                description = "Stock insuficiente o conflicto de idempotencia."
+                description = "Stock insuficiente o conflicto de idempotencia.",
+                content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class))
             ),
             @ApiResponse(
                 responseCode = "422",
-                description = "Uno o más productos no existen."
+                description = "Uno o más productos no existen.",
+                content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class))
             ),
             @ApiResponse(
                 responseCode = "502",
-                description = "Error de comunicación con Mercado Pago."
+                description = "Error de comunicación con Mercado Pago.",
+                content = @Content(mediaType = "application/problem+json", schema = @Schema(implementation = ProblemDetail.class))
             )
         }
     )
