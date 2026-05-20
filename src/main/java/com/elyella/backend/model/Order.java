@@ -23,7 +23,7 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 @EqualsAndHashCode(of = "id")
-@ToString(exclude = {"details"})
+@ToString(exclude = {"details", "payment"})
 public class Order {
 
     @Id
@@ -45,6 +45,9 @@ public class Order {
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;
+    
+    @Column(name = "reservation_expires_at")
+    private LocalDateTime reservationExpiresAt;
 
     /**
      * Detalles del pedido. CascadeType.ALL elimina huérfanos automáticamente.
@@ -52,4 +55,7 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
     private List<OrderDetail> details = new ArrayList<>();
+    
+    @OneToOne(mappedBy = "order", fetch = FetchType.LAZY)
+    private Payment payment;
 }

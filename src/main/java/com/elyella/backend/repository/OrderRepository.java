@@ -5,6 +5,7 @@ import com.elyella.backend.model.enums.OrderStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -18,4 +19,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     /** Retorna todos los pedidos filtrados por estado (útil para el panel admin). */
     List<Order> findByStatusOrderByCreatedAtDesc(OrderStatus status);
+    
+    /** Retorna pedidos en un estado específico con reserva expirada. */
+    List<Order> findByStatusAndReservationExpiresAtBefore(OrderStatus status, LocalDateTime date);
 }

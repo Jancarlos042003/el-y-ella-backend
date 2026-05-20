@@ -5,7 +5,10 @@ package com.elyella.backend.model.enums;
  */
 public enum OrderStatus {
     PENDING,
+    RESERVED,
+    PAID,
     SHIPPED,
     DELIVERED,
-    CANCELLED
+    CANCELLED,
+    EXPIRED
 }
