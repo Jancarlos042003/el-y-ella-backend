@@ -1,11 +1,14 @@
 package com.elyella.backend.dto.request;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+
+import java.util.List;
 
 /**
- * Datos de envío requeridos para procesar el checkout.
- * Los datos de pago son gestionados por Mercado Pago — no se reciben aquí.
+ * Datos requeridos para procesar el checkout.
  */
 public record CheckoutRequest(
 
@@ -25,5 +28,12 @@ public record CheckoutRequest(
 
         String state,
 
-        String postalCode
+        String postalCode,
+        
+        @NotEmpty(message = "El pedido debe contener al menos un ítem")
+        @Valid
+        List<CheckoutItemRequest> items,
+        
+        @NotBlank(message = "La clave de idempotencia es obligatoria")
+        String idempotencyKey
 ) {}

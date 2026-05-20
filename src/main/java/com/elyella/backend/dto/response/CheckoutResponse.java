@@ -7,5 +7,6 @@ package com.elyella.backend.dto.response;
 public record CheckoutResponse(
         Long orderId,
         Long paymentId,
-        String initPoint
+        String initPoint,
+        String status
 ) {}
