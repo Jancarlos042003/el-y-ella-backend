@@ -45,7 +45,11 @@ public class PaymentController {
     @SecurityRequirement(name = "Bearer Auth")
     @Operation(
             summary = "Iniciar checkout",
-            description = "Reserva el stock por 15 minutos, crea el pedido y retorna el initPoint de Mercado Pago para redirigir al usuario.",
+            description = "Reserva el stock por 15 minutos, crea el pedido y retorna el initPoint de Mercado Pago para redirigir al usuario.\n\n" +
+                          "**Comportamiento de Idempotencia (idempotencyKey):**\n" +
+                          "- **Intento exitoso previo (201):** Si la clave ya se procesó con éxito, se retorna la respuesta previamente generada (mismos IDs e initPoint).\n" +
+                          "- **Intento fallido previo (Reintento):** Si el intento anterior con esa clave falló (ej. error 502/500 de comunicación), se permite reintentar el procesamiento y se actualiza el registro del intento en la BD.\n" +
+                          "- **Petición concurrente (Doble click):** Si se envían peticiones paralelas simultáneas antes de guardar la respuesta del primer intento, la base de datos bloquea el duplicado retornando un error HTTP 409 Conflict.",
             responses = {
                     @ApiResponse(responseCode = "201", description = "Checkout iniciado exitosamente, stock reservado temporalmente y preferencia de Mercado Pago creada.",
                             content = @Content(mediaType = "application/json", schema = @Schema(implementation = CheckoutResponse.class))),

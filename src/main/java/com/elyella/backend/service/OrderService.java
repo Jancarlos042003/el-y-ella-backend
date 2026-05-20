@@ -240,13 +240,16 @@ public class OrderService {
     }
     
     private void saveCheckoutAttempt(User user, String idempotencyKey, Order order, Payment payment, CheckoutStatus status) {
-        CheckoutAttempt newAttempt = CheckoutAttempt.builder()
-                .user(user)
-                .idempotencyKey(idempotencyKey)
-                .order(order)
-                .payment(payment)
-                .status(status)
-                .build();
-        checkoutAttemptRepository.save(newAttempt);
+        CheckoutAttempt attempt = checkoutAttemptRepository.findByUserIdAndIdempotencyKey(user.getId(), idempotencyKey)
+                .orElseGet(() -> CheckoutAttempt.builder()
+                        .user(user)
+                        .idempotencyKey(idempotencyKey)
+                        .build());
+
+        attempt.setOrder(order);
+        attempt.setPayment(payment);
+        attempt.setStatus(status);
+
+        checkoutAttemptRepository.save(attempt);
     }
 }
