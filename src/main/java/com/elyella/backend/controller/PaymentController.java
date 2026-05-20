@@ -6,12 +6,9 @@ import com.elyella.backend.dto.response.PaymentStatusResponse;
 import com.elyella.backend.service.OrderService;
 import com.elyella.backend.service.PaymentService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.springframework.http.ProblemDetail;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,26 +41,41 @@ public class PaymentController {
     @PostMapping("/checkout")
     @SecurityRequirement(name = "Bearer Auth")
     @Operation(
-            summary = "Iniciar checkout",
-            description = "Reserva el stock por 15 minutos, crea el pedido y retorna el initPoint de Mercado Pago para redirigir al usuario.\n\n" +
-                          "**Comportamiento de Idempotencia (idempotencyKey):**\n" +
-                          "- **Intento exitoso previo (201):** Si la clave ya se procesó con éxito, se retorna la respuesta previamente generada (mismos IDs e initPoint).\n" +
-                          "- **Intento fallido previo (Reintento):** Si el intento anterior con esa clave falló (ej. error 502/500 de comunicación), se permite reintentar el procesamiento y se actualiza el registro del intento en la BD.\n" +
-                          "- **Petición concurrente (Doble click):** Si se envían peticiones paralelas simultáneas antes de guardar la respuesta del primer intento, la base de datos bloquea el duplicado retornando un error HTTP 409 Conflict.",
-            responses = {
-                    @ApiResponse(responseCode = "201", description = "Checkout iniciado exitosamente, stock reservado temporalmente y preferencia de Mercado Pago creada.",
-                            content = @Content(mediaType = "application/json", schema = @Schema(implementation = CheckoutResponse.class))),
-                    @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos (errores de validación sintáctica).",
-                            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ProblemDetail.class))),
-                    @ApiResponse(responseCode = "401", description = "No autenticado. Token JWT ausente o vencido.",
-                            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ProblemDetail.class))),
-                    @ApiResponse(responseCode = "409", description = "Conflicto. Stock insuficiente o colisión de llave de idempotencia.",
-                            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ProblemDetail.class))),
-                    @ApiResponse(responseCode = "422", description = "Checkout no procesable. Uno o más productos no existen en la base de datos.",
-                            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ProblemDetail.class))),
-                    @ApiResponse(responseCode = "502", description = "Fallo de comunicación externa al crear la preferencia con la pasarela de pagos (Mercado Pago).",
-                            content = @Content(mediaType = "application/json", schema = @Schema(implementation = ProblemDetail.class)))
-            }
+        summary = "Iniciar checkout",
+        description = """
+            Reserva el stock temporalmente, crea el pedido y genera la preferencia de Mercado Pago.
+
+            Idempotencia:
+            - Si la misma idempotencyKey ya fue procesada exitosamente, se retorna la misma respuesta.
+            - Si el intento previo falló, la operación puede reintentarse con la misma clave.
+            - Peticiones concurrentes con la misma clave pueden retornar HTTP 409 Conflict.
+            """,
+        responses = {
+            @ApiResponse(
+                responseCode = "201",
+                description = "Checkout iniciado exitosamente."
+            ),
+            @ApiResponse(
+                responseCode = "400",
+                description = "Datos inválidos."
+            ),
+            @ApiResponse(
+                responseCode = "401",
+                description = "Usuario no autenticado."
+            ),
+            @ApiResponse(
+                responseCode = "409",
+                description = "Stock insuficiente o conflicto de idempotencia."
+            ),
+            @ApiResponse(
+                responseCode = "422",
+                description = "Uno o más productos no existen."
+            ),
+            @ApiResponse(
+                responseCode = "502",
+                description = "Error de comunicación con Mercado Pago."
+            )
+        }
     )
     public ResponseEntity<CheckoutResponse> checkout(@AuthenticationPrincipal UserDetails userDetails,
                                                      @Valid @RequestBody CheckoutRequest request) {
