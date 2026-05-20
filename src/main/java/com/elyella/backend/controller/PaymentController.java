@@ -45,6 +45,9 @@ public class PaymentController {
         description = """
             Reserva el stock temporalmente, crea el pedido y genera la preferencia de Mercado Pago.
 
+            Consolidación de ítems:
+            - Si se envían elementos duplicados en la lista de items (mismo flowerId), el backend los consolidará sumando sus cantidades de forma automática.
+
             Idempotencia:
             - Si la misma idempotencyKey ya fue procesada exitosamente, se retorna la misma respuesta.
             - Si el intento previo falló, la operación puede reintentarse con la misma clave.

@@ -1,5 +1,6 @@
 package com.elyella.backend.dto.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -32,6 +33,7 @@ public record CheckoutRequest(
         
         @NotEmpty(message = "El pedido debe contener al menos un ítem")
         @Valid
+        @Schema(description = "Lista de ítems del pedido. Si se envían elementos duplicados (mismo flowerId), el servidor los consolidará sumando sus cantidades.")
         List<CheckoutItemRequest> items,
         
         @NotBlank(message = "La clave de idempotencia es obligatoria")
